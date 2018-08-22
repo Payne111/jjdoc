@@ -91,7 +91,7 @@ class Method extends Common {
 
     setBelong(belong) {
         super.setBelong(belong)
-        this.optimizeType('returnType')
+        this.optimizeType('returnType', this.belong)
         this.params.forEach(param => {
             param.setBelong(this)
         })

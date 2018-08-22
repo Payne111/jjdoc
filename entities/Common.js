@@ -17,13 +17,15 @@ class Common extends Base {
         this.annotations.push(annotation)
     }
 
-    optimizeType(typeField) {
+    optimizeType(typeField, belong) {
         const typeName = this[typeField]
-        if (typeName == this.belong.name) { // 构造函数
-            this[typeField] = this.belong
-            return
+        if (this.belong) {
+            if (typeName == this.belong.name) { // 构造函数
+                this[typeField] = this.belong
+                return
+            }
         }
-        const pool = this.findpackagePool(this.belong)
+        const pool = this.findpackagePool(belong)
         if (pool) {
             const completeType = pool[typeName]
             if (completeType) {
@@ -36,7 +38,7 @@ class Common extends Base {
                         })
                     )
                 }
-                emitter.on(completeType, (type) => {
+                emitter.on(completeType, type => {
                     this[typeField] = type
                 })
             }
@@ -48,11 +50,12 @@ class Common extends Base {
         if (belong) {
             pool = belong.packagePool
             if (!pool) {
-                return this.findpackagePool()
+                pool = this.findpackagePool(belong.belong)
             }
         }
         return pool
     }
+
 }
 
 module.exports = Common

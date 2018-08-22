@@ -26,6 +26,7 @@ class Class extends Common {
         res = this.text.match(regExp.SUPER)
         if (res) {
             this.superClass = res[0]
+            this.optimizeType('superClass', this)
         }
     }
 

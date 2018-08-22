@@ -11,7 +11,7 @@ class Param extends Common {
 
     setBelong(belong) {
         super.setBelong(belong)
-        this.optimizeType('type')
+        this.optimizeType('type', this.belong.belong)
     }
 }
 
