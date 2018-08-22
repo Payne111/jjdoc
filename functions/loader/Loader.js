@@ -70,7 +70,7 @@ class Loader {
                             index++
                             rsv()
                         } else {
-                            reject('包路径不存在')
+                            reject(`${files[index]}路径不存在`)
                         }
                     }
 

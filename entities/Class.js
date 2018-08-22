@@ -1,6 +1,6 @@
 const Common = require('./Common')
 const regExp = {
-    NAME: /(?<=\s+class\s+)\b[a-zA-Z]+\b/, // 类名
+    NAME: /(?<=\s+(class|interface)\s+)\b[a-zA-Z]+\b/, // 类名
     SUPER: /(?<=\s+extends\s+)\b[a-zA-Z]+\b/, // 父类
     COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))/, // 注释
 }
@@ -12,7 +12,7 @@ class Class extends Common {
         this.fields = param.fields || []
         this.innerClassPool = param.innerClassPool || {}
         this.responsibility = param.responsibility
-        this.packageNamePool = param.packageNamePool || {}
+        this.packagePool = param.packagePool || {}
         this.depPool = param.depPool || {}
     }
 
@@ -30,27 +30,24 @@ class Class extends Common {
     }
 
     addPackage(className, packageName) {
-        this.packageNamePool[className] = packageName
+        this.packagePool[className] = packageName
     }
 
     addInnerClass(clazz) {
         this.innerClassPool[clazz.name] = clazz
-        this.setBelong(clazz)
+        clazz.setBelong(this)
     }
 
     addMethod(method) {
         this.methods.push(method)
-        this.setBelong(method)
+        method.setBelong(this)
     }
 
     addField(field) {
         this.fields.push(field)
-        this.setBelong(field)
+        field.setBelong(this)
     }
 
-    setBelong(member) {
-        member.belong = this
-    }
 }
 
 module.exports = Class

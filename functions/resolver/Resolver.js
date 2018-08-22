@@ -4,7 +4,9 @@ const Comment = require('../../entities/Comment')
 const Annotation = require('../../entities/Annotation')
 const Method = require('../../entities/Method')
 const Field = require('../../entities/Field')
-
+const packagePool = require('../../pools/package')
+const depPool = require('../../pools/dep')
+const loader = require('../../functions/loader')
 class Resolver {
     constructor(param = {}) {
         this.text = param.text
@@ -20,7 +22,33 @@ class Resolver {
         this.preproccess()
         this.rsvPackageName()
         this.iterate()
+        this.resolvePackagePool()
         return this.clazz
+    }
+
+    resolvePackagePool() {
+        const names = Object.keys(packagePool.getPool())
+        rsv()
+        function rsv() {
+            const name = names.pop()
+            if (name) {
+                loader.load(name).then(text => {
+                    let clazz = depPool[name]
+                    if (!clazz) {
+                        const resolver = new Resolver({
+                            text
+                        })
+                        clazz = resolver.resolve()
+                        depPool[name] = clazz
+                    }
+                    const pkg = packagePool.get(name)
+                    if (!pkg.struct) {
+                        pkg.setStruct(clazz)
+                    }
+                    rsv()
+                })
+            }
+        }
     }
 
     preproccess() {
@@ -30,13 +58,13 @@ class Resolver {
 
     rsvPackageName() {
         this.currEntity = Object.create(null)
-        this.currEntity.packageNamePool = Object.create(null)
+        this.currEntity.packagePool = Object.create(null)
         const regObj = new RegExp(regExp.DEP_PACKAGE_NAME)
         let res
         while ((res = regObj.exec(this.text)) !== null) {
             const packageName = res[0].replace(';', '')
             const className = getClassName(packageName)
-            this.currEntity.packageNamePool[className] = packageName
+            this.currEntity.packagePool[className] = packageName
             this.lastMatchRes = res
         }
         this.clean()
@@ -92,8 +120,10 @@ class Resolver {
             this.currEntity = null
 
             const endIndex = this.matchPairs()
-            this.lastMatchRes[0] = '}'
-            this.lastMatchRes.index = endIndex
+            if (endIndex) {
+                this.lastMatchRes[0] = '}'
+                this.lastMatchRes.index = endIndex
+            }
 
         } else if (this.match(regExp.FIELD_SIGNATURE)) { // 字段
             const field = new Field({
@@ -156,7 +186,10 @@ class Resolver {
                 leftCount++
             }
         }
-        return res.index
+        if (res) {
+            res = res.index
+        }
+        return res
     }
 
     clean() {

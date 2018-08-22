@@ -8,6 +8,11 @@ class Param extends Common {
     setType(type) {
         this.type = type
     }
+
+    setBelong(belong) {
+        super.setBelong(belong)
+        this.optimizeType('type')
+    }
 }
 
 module.exports = Param

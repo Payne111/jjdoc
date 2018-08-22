@@ -3,14 +3,14 @@ const Annotation = require('../entities/Annotation')
 const Param = require('../entities/Param')
 
 const regExp = {
-    NAME: /\w+(?=\s*\()/, // 方法名
-    RETURN: /(?<=(public|private|protected)?\s*(static)?\s*)([A-Z]\w+(<.*>)?)/, // 返回类型
+    METHOD_COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))$/, // 方法注释
+    METHOD_NAME: /\w+(?=\s*\()/, // 方法名
+    RETURN: /\w+(<.*>)?$/, // 返回类型
     PARAM_STR: /(?<=\().*(?=\))/, //参数
-    ANNOTATION: /(?<=^\s*)@\w+(\(.*\))?/, // 注解
-    COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))/, // 注释
-    PARAM_TYPE: /(?<=^\s*)[A-Z]\w+/, // 参数类型
+    ANNOTATION: /(?<=^\s*)@\w+(\(.*\))?/, // 参数注解
+    PARAM_TYPE: /(?<=^\s*)\w+(<.*>)?/, // 参数类型
     PARAM_NAME: /(?<=^\s*)\w+/, // 参数名
-
+    SCOPE: /public|private|protected/, // 修饰符
 }
 
 let lastMatchRes = null
@@ -21,9 +21,11 @@ const match = reg => {
     return lastMatchRes
 }
 
-const iterate = () => {
+/**
+ * 解析参数
+ */
+const iterateParam = () => {
     const param = new Param()
-
     // 参数注解
     if (match(regExp.ANNOTATION)) {
         const annotation = new Annotation({
@@ -47,7 +49,7 @@ const iterate = () => {
 
     if (lastMatchRes) {
         params.push(param)
-        iterate()
+        iterateParam()
     }
 }
 
@@ -65,16 +67,34 @@ class Method extends Common {
     }
 
     resolveSignature() {
-        // 注释
-        let res = this.text.match(regExp.COMMENT)
+        let text = this.text
+        // 方法注释
+        let res = text.match(regExp.METHOD_COMMENT)
         if (res) {
             this.comment = res[0]
         }
-        this.name = this.text.match(regExp.NAME)[0]
-        this.returnType = this.text.match(regExp.RETURN)[0]
+        // 方法名
+        res = text.match(regExp.METHOD_NAME)
+        this.name = res[0]
+        // 返回类型
+        text = text.substring(0, res.index).trim()
+        res = text.match(regExp.RETURN)
+        this.returnType = res[0]
+        if (regExp.SCOPE.test(this.returnType)) { // 构造函数
+            this.returnType = this.name
+        }
+        // 参数
         paramStr = this.text.match(regExp.PARAM_STR)[0]
-        iterate()
+        iterateParam()
         this.params = params
+    }
+
+    setBelong(belong) {
+        super.setBelong(belong)
+        this.optimizeType('returnType')
+        this.params.forEach(param => {
+            param.setBelong(this)
+        })
     }
 }
 
