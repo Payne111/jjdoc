@@ -1,16 +1,30 @@
 const config = require('./config')
 const fs = require('fs')
 const path = require('path')
-
+const utils = require('../../utils')
+const Err = require('../../entities/Err')
 const readFile = function (filePath) {
     return new Promise((resolve, reject) => {
-        resolve(fs.readFileSync(filePath, "utf-8"))
+        try {
+            resolve(fs.readFileSync(filePath, "utf-8"))
+        } catch (error) {
+            resolve(new Err({
+                msg: `文件${filePath}不存在`
+            }))
+        }
     })
 }
 
 const readdir = function (dirPath) {
     return new Promise((resolve, reject) => {
-        resolve(fs.readdirSync(dirPath, "utf-8"))
+        try {
+            resolve(fs.readdirSync(dirPath, "utf-8"))
+        } catch (error) {
+            resolve(new Err({
+                msg: `文件夹${dirPath}不存在`
+            }))
+        }
+        
     })
 }
 
@@ -25,7 +39,9 @@ const statDir = function (dirPath) {
     return new Promise((resolve, reject) => {
         fs.stat(dirPath, (err, stats) => {
             if (err) {
-                reject('获取文件stats失败');
+                resolve(new Err({
+                    msg: `文件解析失败：${dirPath}`
+                }));
             } else {
                 if (stats.isDirectory()) {
                     resolve(true)
@@ -36,31 +52,38 @@ const statDir = function (dirPath) {
 }
 
 class Loader {
-    constructor() {
-
-    }
+    constructor() {}
 
     load(packageName) {
         return new Promise((resolve, reject) => {
             readdir(config.path.project)
                 .then(files => {
+                    if (utils.isErr(files)) {
+                        resolve(files)
+                        return
+                    }
                     const packagePath = resolvePackageName(packageName)
                     let index = 0
+                    let filePath
                     rsv()
 
                     function rsv() {
                         const dirname = files[index]
                         if (!config.ignore.has(dirname)) {
                             const dirPath = path.join(config.path.project, dirname)
-                            statDir(dirPath).then(() => {
-                                const filePath = path.join(config.path.project, dirname, config.path.common, packagePath)
-                                readFile(filePath).then(data => {
-                                    resolve(data)
-                                }).catch(err => {
-                                    rsvIterate()
-                                })
+                            statDir(dirPath).then(isDir => {
+                                if (isDir) {
+                                    filePath = path.join(dirPath, config.path.common, packagePath)
+                                    readFile(filePath).then(fileData => {
+                                        if (utils.isErr(fileData)) {
+                                            rsvIterate()
+                                        }else {
+                                            resolve(fileData)
+                                        }
+                                    })
+                                }
                             })
-                        }else {
+                        } else {
                             rsvIterate()
                         }
                     }
@@ -70,18 +93,15 @@ class Loader {
                             index++
                             rsv()
                         } else {
-                            reject(`${files[index]}路径不存在`)
+                            resolve(new Err({
+                                msg: `${packagePath}路径不存在`
+                            }))
                         }
                     }
 
                 })
-                .catch(err => {
-                    reject('读取项目目录失败')
-                })
         })
-
     }
-
 }
 
 module.exports = Loader

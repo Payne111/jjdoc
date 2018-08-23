@@ -1,7 +1,7 @@
 const Common = require('./Common')
 const regExp = {
-    NAME: /(?<=\s+(class|interface)\s+)\b[a-zA-Z]+\b/, // 类名
-    SUPER: /(?<=\s+extends\s+)\b[a-zA-Z]+\b/, // 父类
+    NAME: /(?<=\s+(class|interface|enum)\s+)\w+/, // 类名
+    SUPER: /(?<=\s+(extends|implements)\s+)\w+/, // 父类
     COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))/, // 注释
 }
 class Class extends Common {

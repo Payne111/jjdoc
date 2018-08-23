@@ -15,6 +15,10 @@ class PackagePool {
         return this.pool[name]
     }
 
+    delete(name) {
+        delete this.pool[name]
+    }
+
     getPool() {
         return this.pool
     }

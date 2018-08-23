@@ -1,5 +1,5 @@
 const Loader = require('./Loader')
 
-const loader = new Loader()
+// const loader = new Loader()
 
-module.exports = loader
+module.exports = Loader

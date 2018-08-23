@@ -1,6 +1,7 @@
 const Base = require('./Base')
 const Package = require('../entities/Package')
 const packagePool = require('../pools/package')
+const failedPool = require('../pools/failed')
 const emitter = require('../functions/emitter')
 class Common extends Base {
     constructor(param = {}) {
@@ -30,7 +31,7 @@ class Common extends Base {
             const completeType = pool[typeName]
             if (completeType) {
                 this[typeField] = completeType
-                if (!packagePool.has(completeType)) {
+                if (!packagePool.has(completeType) && !failedPool.has(completeType)) {
                     packagePool.add(
                         completeType,
                         new Package({

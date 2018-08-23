@@ -3,6 +3,8 @@ const regExp = {
     NAME: /(?<=@)\w+/, //注解名
     STR_PARAM: /(?<=\(").*(?="\))/, //字符串参数
     KV_PARAM: /(?<=\().*(?=\))/, //键值对参数
+    QUOTATION: /"/, //引号
+    STR: /(?<="\s*).*(?=\s*")/, //字符串
 }
 class Annotation extends Base {
     constructor(param = {}) {
@@ -10,7 +12,7 @@ class Annotation extends Base {
         this.name = this.text.match(regExp.NAME)[0]
         let paramMatchRes = this.text.match(regExp.STR_PARAM)
         if (paramMatchRes) {
-            this.param = paramMatchRes[0]
+            this.param = paramMatchRes[0].trim().replace(/"/g, '').trim()
         } else {
             paramMatchRes = this.text.match(regExp.KV_PARAM)
             if (paramMatchRes) {
@@ -19,7 +21,13 @@ class Annotation extends Base {
                 kvs = kvs.split(',')
                 kvs.forEach(kv => {
                     kv = kv.split('=')
-                    this.param[kv[0]] = kv[1]
+                    const k = kv[0].trim()
+                    let v = kv[1]
+                    if (regExp.QUOTATION.test(v)) {
+                        v = v.match(regExp.STR)[0]
+                    }
+                    v = v.trim().replace(/"/g, '').trim()
+                    this.param[k] = v
                 });
             }
         }

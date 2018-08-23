@@ -6,7 +6,9 @@ const Method = require('../../entities/Method')
 const Field = require('../../entities/Field')
 const packagePool = require('../../pools/package')
 const depPool = require('../../pools/dep')
-const loader = require('../../functions/loader')
+const failedPool = require('../../pools/failed')
+const Loader = require('../../functions/loader')
+const utils = require('../../utils')
 class Resolver {
     constructor(param = {}) {
         this.text = param.text
@@ -27,12 +29,19 @@ class Resolver {
     }
 
     resolvePackagePool() {
-        const names = Object.keys(packagePool.getPool())
         rsv()
         function rsv() {
+            const names = Object.keys(packagePool.getPool())
             const name = names.pop()
             if (name) {
+                const pkg = packagePool.get(name)
+                packagePool.delete(name)
+                const loader = new Loader()
                 loader.load(name).then(text => {
+                    if (utils.isErr(text)) {
+                        failedPool.add(name)
+                        return rsv()
+                    }
                     let clazz = depPool[name]
                     if (!clazz) {
                         const resolver = new Resolver({
@@ -41,7 +50,6 @@ class Resolver {
                         clazz = resolver.resolve()
                         depPool[name] = clazz
                     }
-                    const pkg = packagePool.get(name)
                     if (!pkg.struct) {
                         pkg.setStruct(clazz)
                     }
@@ -68,7 +76,6 @@ class Resolver {
             this.lastMatchRes = res
         }
         this.clean()
-        // console.log(this.text)
     }
 
     iterate() {
