@@ -58,17 +58,31 @@ class ApiFactory {
 
     // 处理所有方法
     processMethods() {
-        const methods = this.material.methods
-        if (methods) {
-            methods.forEach(method => {
-                this.processMethod(method)
-            });
+        const methodSet = new Set()
+        const methods = []
+        function mergeMethds(clazz) {
+            if (utils.isObject(clazz)) {
+                const arr = clazz.methods
+                arr.forEach(method => {
+                    const methodName = method.name
+                    if (!methodSet.has(methodName)) {
+                        methodSet.add(methodName)
+                        methods.push(method)
+                    }
+                })
+                mergeMethds(clazz.superClass)
+                return methods
+            }
         }
+        mergeMethds(this.material)
+        methods.forEach(method => {
+            this.processMethod(method)
+        });
     }
 
     // 处理方法
     processMethod(method) {
-        
+
         let api = null
 
         // 注解
@@ -127,6 +141,7 @@ class ApiFactory {
                 struct.name = field.name
                 struct.typeName = field.typeName
                 struct.typeStruct = this.processStruct(field.typeStruct)
+                struct.comment = field.comment
                 res[field.name] = struct
             })
             if (clazz.superClass) {

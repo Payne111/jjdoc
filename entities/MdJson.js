@@ -36,12 +36,7 @@ class MdJson {
         this.addH2("返回")
         this.addUl([this.createUl(this, null, 'returnTypeName', 'returnTypeStruct')])
         this.addH1('')
-        // this.addUl(['返回类型'])
-        // this.addCode(this.returnTypeName)
-        // if (this.returnTypeStruct) {
-        //     this.addUl(['返回类型结构'])
-        //     this.addCode()
-        // }
+
         return this.res
     }
 
@@ -96,6 +91,9 @@ class MdJson {
         row = `${row}${data[typeNameFeild]}`
         if (data.required === false) {
             row += ' | 可选'
+        }
+        if (data.comment) {
+            row += ` ${data.comment.text}`
         }
         ul.push(row)
         const struct = data[typeStructField]
