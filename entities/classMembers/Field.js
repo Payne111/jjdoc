@@ -1,18 +1,20 @@
-const Common = require('./Common')
+const ClassMember = require('../ClassMember')
 const regExp = {
     COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))/, // 注释
     VALUE: /(?<==\s*)[^\s]+\s*(?=;)/, //字段值
     NAME: /\w+$/, // 字段名
     TYPE: /\w+(<.*>)?$/, // 类型
 }
-class Field extends Common {
+/**
+ * 字段
+ */
+class Field extends ClassMember {
     constructor(param = {}) {
         super(param)
-        this.type = param.type
-        this.value = param.value
+        this.value = param.value || null
     }
 
-    resolveSignature() {
+    parseSignature() {
         let text = this.text
         // 注释
         let res = text.match(regExp.COMMENT)
@@ -31,15 +33,15 @@ class Field extends Common {
         res = text.match(regExp.NAME)
         this.name = res[0]
 
-        //类型
+        //类型名
         text = text.substring(0, res.index).trim()
         res = text.match(regExp.TYPE)
-        this.type = res[0]
+        this.typeName = res[0]
     }
 
     setBelong(belong) {
         super.setBelong(belong)
-        this.optimizeType('type', this.belong)
+        this.optimizeType(this.belong)
     }
 
 

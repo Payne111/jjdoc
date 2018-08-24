@@ -6,7 +6,6 @@ class ApiConvertor {
     }
     convert() {
         this.apis.forEach(api => {
-            console.log(api)
             const mdJson = new MdJson({...api}).done()
             this.mdJsons.push(mdJson)
         })

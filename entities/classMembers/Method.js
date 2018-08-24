@@ -1,6 +1,6 @@
-const Common = require('./Common')
-const Annotation = require('../entities/Annotation')
-const Param = require('../entities/Param')
+const ClassMember = require('../ClassMember')
+const Annotation = require('./Annotation')
+const Param = require('./Param')
 
 const regExp = {
     METHOD_COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))$/, // 方法注释
@@ -14,15 +14,23 @@ const regExp = {
     SEMICOLON: /(?<=^\s*),/, // 逗号  
 }
 
-class Method extends Common {
+/**
+ * 方法
+ */
+class Method extends ClassMember {
     constructor(param = {}) {
         super(param)
-        this.returnType = null
+        this.returnTypeName = param.returnTypeName || null
+        this.returnTypePackageName = param.returnTypePackageName || null
+        this.returnTypeStruct = param.returnTypeStruct || null
         this.params = param.params || []
-        this.paramStr = ''
+        this.paramStr = param.paramStr || ''
     }
 
-    resolveSignature() {
+    /**
+     * 解析方法签名
+     */
+    parseSignature() {
         let text = this.text
         // 方法注释
         let res = text.match(regExp.METHOD_COMMENT)
@@ -34,25 +42,29 @@ class Method extends Common {
         if(res) {
             this.name = res[0]
         }
-        // 返回类型
+        // 返回类型名
         text = text.substring(0, res.index).trim()
         res = text.match(regExp.RETURN)
         if(res) {
-            this.returnType = res[0]
+            this.returnTypeName = res[0]
         }
-        if (regExp.SCOPE.test(this.returnType)) { // 构造函数
-            this.returnType = this.name
+        if (regExp.SCOPE.test(this.returnTypeName)) { // 构造函数
+            this.returnTypeName = this.name
         }
         // 参数
         this.paramStr = this.text.match(regExp.PARAM_STR)[0]
         if (this.paramStr) {
             const paramStr = this.paramStr
-            this.rsvParamStr()
+            this.parseParamStr()
             this.paramStr = paramStr
         }
     }
 
-    rsvParamStr() {
+    /**
+     * 解析参数
+     * 由于泛型有逗号，不能用逗号分离参数，只能迭代进行解析
+     */
+    parseParamStr() {
 
         let lastMatchRes = null
         const match = reg => {
@@ -67,7 +79,7 @@ class Method extends Common {
 
         const param = new Param()
 
-        let str = ''
+        let str = '' // 参数文本
 
         // 参数注解
         if (match(regExp.ANNOTATION)) {
@@ -81,7 +93,7 @@ class Method extends Common {
 
         // 参数类型
         if (match(regExp.PARAM_TYPE)) {
-            param.setType(lastMatchRes[0])
+            param.setTypeName(lastMatchRes[0])
             str += ' '
             str += lastMatchRes[0]
         }
@@ -95,20 +107,20 @@ class Method extends Common {
         }
         clean()
 
-        // text
+        // 参数文本
         param.setText(str)
 
         this.params.push(param)
 
         if (match(regExp.SEMICOLON)) {
             clean()
-            return this.rsvParamStr()
+            return this.parseParamStr()
         }
     }
 
     setBelong(belong) {
         super.setBelong(belong)
-        this.optimizeType('returnType', this.belong)
+        this.optimizeType(this.belong, 'returnTypeName', 'returnTypePackageName', 'returnTypeStruct')
         this.params.forEach(param => {
             param.setBelong(this)
         })

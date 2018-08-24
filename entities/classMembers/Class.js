@@ -1,37 +1,38 @@
-const Common = require('./Common')
+const ClassMember = require('../ClassMember')
 const regExp = {
     NAME: /(?<=\s+(class|interface|enum)\s+)\w+/, // 类名
     SUPER: /(?<=\s+(extends|implements)\s+)\w+/, // 父类
     COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))/, // 注释
 }
-class Class extends Common {
+class Class extends ClassMember {
     constructor(param = {}) {
         super(param)
-        this.superClass = param.superClass
+        this.packageName = param.packageName || null
+        this.superClass = param.superClass || null
         this.methods = param.methods || []
         this.fields = param.fields || []
         this.innerClassPool = param.innerClassPool || {}
-        this.responsibility = param.responsibility
         this.packagePool = param.packagePool || {}
         this.depPool = param.depPool || {}
     }
 
-    resolveSignature() {
+    parseSignature() {
         this.name = this.text.match(regExp.NAME)[0]
         // 注释
         let res = this.text.match(regExp.COMMENT)
         if (res) {
             this.comment = res[0]
         }
+        // 父类
         res = this.text.match(regExp.SUPER)
         if (res) {
             this.superClass = res[0]
-            this.optimizeType('superClass', this)
+            this.optimizeType(this)
         }
     }
 
-    addPackage(className, packageName) {
-        this.packagePool[className] = packageName
+    setPackageName(packageName) {
+        this.packageName = packageName
     }
 
     addInnerClass(clazz) {

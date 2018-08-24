@@ -10,4 +10,6 @@ module.exports = {
     PAIR: /{|}/g,
     DEP_PACKAGE_NAME: /(?<=import\s+)[^\s].+[^\s]\s*;/g, // 依赖包名
     PACKAGE: /package\s+[^\s].+[^\s]\s*;/, // 文件包名
+    CLASS_PACKAGE: /(?<=package\s+).+(?=\s*;)/, // 文件包名
+
 }

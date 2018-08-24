@@ -1,4 +1,7 @@
 const emitter = require('../functions/emitter')
+/**
+ * 包
+ */
 class Package {
     constructor(param =  {}) {
         this.name = param.name

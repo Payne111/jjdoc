@@ -1,34 +1,137 @@
-const regExp = require('./regExp')
-const Class = require('../../entities/Class')
-const Comment = require('../../entities/Comment')
-const Annotation = require('../../entities/Annotation')
-const Method = require('../../entities/Method')
-const Field = require('../../entities/Field')
+const Class = require('../../entities/classMembers/Class')
+const Method = require('../../entities/classMembers/Method')
+const Field = require('../../entities/classMembers/Field')
+const Annotation = require('../../entities/classMembers/Annotation')
+const Comment = require('../../entities/classMembers/Comment')
+
 const packagePool = require('../../pools/package')
 const depPool = require('../../pools/dep')
 const failedPool = require('../../pools/failed')
+
 const Loader = require('../../functions/loader')
 const utils = require('../../utils')
+const regExp = require('./regExp')
+
 class Resolver {
     constructor(param = {}) {
         this.text = param.text
-        this.lastMatchRes = null
-        this.clazz = null
-        this.hasClazzMatched = false
-        this.oldEntity = null
-        this.currEntity = null
+        this.lastMatchRes = null // 最新匹配结果
+        this.outerClass = null
+        this.hasOuterClassMatched = false // 外部类已经匹配了
+        this.memberCache = null
         this.complete = false
     }
 
     resolve() {
-        this.preproccess()
-        this.rsvPackageName()
-        this.iterate()
-        this.resolvePackagePool()
-        return this.clazz
+        this.parseOutClassPackage()
+        this.parseImports()
+        this.parseClassBody()
+        this.processPackagePool()
+        return this.outerClass
     }
 
-    resolvePackagePool() {
+    parseOutClassPackage() {
+        this.lastMatchRes = this.text.match(regExp.PACKAGE)
+        if (this.lastMatchRes) { // 内部类没有包名
+            this.memberCache = Object.create(null)
+            const text = this.lastMatchRes[0]
+            const packageName = text.match(regExp.CLASS_PACKAGE)[0]
+            this.memberCache.packageName = packageName
+        }
+        this.clean()
+    }
+
+    parseImports() {
+        if (this.memberCache) { // 有包名，是外部类
+            this.memberCache.packagePool = Object.create(null)
+            const regObj = new RegExp(regExp.DEP_PACKAGE_NAME)
+            let res
+            while ((res = regObj.exec(this.text)) !== null) {
+                const packageName = res[0].replace(';', '')
+                const className = getClassName(packageName)
+                this.memberCache.packagePool[className] = packageName
+                this.lastMatchRes = res
+            }
+            this.clean()
+        }
+    }
+
+    /**
+     * 解析类体
+     */
+    parseClassBody() {
+        if (!this.memberCache) {
+            this.memberCache = Object.create(null)
+        }
+        if (this.match(regExp.COMMENT)) { // 注释
+            this.add2Cache('comment', () => {
+                return new Comment({
+                    text: this.lastMatchRes[0]
+                })
+            })
+
+        } else if (this.match(regExp.ANNOTATION)) { //注解
+            this.add2Cache('annotations', () => {
+                return new Annotation({
+                    text: this.lastMatchRes[0]
+                })
+            }, true)
+
+        } else if (this.match(regExp.CLASS_SIGNATURE)) { // 类
+            if (this.hasOuterClassMatched) { // 内部类
+                const endIndex = this.matchPairs()
+                const resolver = new Resolver({
+                    text: this.text.substring(this.lastMatchRes.index, endIndex + 1)
+                })
+                const clazz = resolver.resolve()
+                this.outerClass.addInnerClass(clazz)
+                this.lastMatchRes[0] = '}'
+                this.lastMatchRes.index = endIndex
+            } else { // 外部类
+                this.hasOuterClassMatched = true
+                this.outerClass = new Class({
+                    text: this.lastMatchRes[0],
+                    ...this.memberCache
+                })
+                this.outerClass.parseSignature()
+                this.outerClass.setPackageName(this.memberCache.packageName + '.' + this.outerClass.name)
+                this.memberCache = null
+            }
+        } else if (this.match(regExp.METHOD_SIGNATURE)) { // 方法
+            const method = new Method({
+                text: this.lastMatchRes[0],
+                ...this.memberCache
+            })
+            method.parseSignature()
+            this.outerClass.addMethod(method)
+            this.memberCache = null
+
+            const endIndex = this.matchPairs()
+            if (endIndex) {
+                this.lastMatchRes[0] = '}'
+                this.lastMatchRes.index = endIndex
+            }
+
+        } else if (this.match(regExp.FIELD_SIGNATURE)) { // 字段
+            const field = new Field({
+                text: this.lastMatchRes[0],
+                ...this.memberCache
+            })
+            field.parseSignature()
+            this.outerClass.addField(field)
+            this.memberCache = null
+        }
+
+        this.clean()
+        if (this.lastMatchRes) {
+            this.parseClassBody()
+        }
+    }
+
+    /**
+     * 解析全局包池
+     */
+    processPackagePool() {
         rsv()
         function rsv() {
             const names = Object.keys(packagePool.getPool())
@@ -59,98 +162,15 @@ class Resolver {
         }
     }
 
-    preproccess() {
-        this.lastMatchRes = this.text.match(regExp.PACKAGE)
-        this.clean()
-    }
-
-    rsvPackageName() {
-        this.currEntity = Object.create(null)
-        this.currEntity.packagePool = Object.create(null)
-        const regObj = new RegExp(regExp.DEP_PACKAGE_NAME)
-        let res
-        while ((res = regObj.exec(this.text)) !== null) {
-            const packageName = res[0].replace(';', '')
-            const className = getClassName(packageName)
-            this.currEntity.packagePool[className] = packageName
-            this.lastMatchRes = res
-        }
-        this.clean()
-    }
-
-    iterate() {
-        if (!this.currEntity) {
-            this.currEntity = Object.create(null)
-        }
-        if (this.match(regExp.COMMENT)) { // 注释
-            this.setCurrEntityMember('comment', () => {
-                return new Comment({
-                    text: this.lastMatchRes[0]
-                })
-            })
-
-        } else if (this.match(regExp.ANNOTATION)) { //注解
-            this.setCurrEntityMember('annotations', () => {
-                const annotation = new Annotation({
-                    text: this.lastMatchRes[0]
-                })
-                return annotation
-            }, true)
-
-        } else if (this.match(regExp.CLASS_SIGNATURE)) { // 类
-            if (this.hasClazzMatched) { // 内部类
-                const endIndex = this.matchPairs()
-                const resolver = new Resolver({
-                    text: this.text.substring(this.lastMatchRes.index, endIndex + 1)
-                })
-                const clazz = resolver.resolve()
-                this.clazz.addInnerClass(clazz)
-                this.lastMatchRes[0] = '}'
-                this.lastMatchRes.index = endIndex
-
-            } else { // 外部类
-                this.hasClazzMatched = true
-                this.clazz = new Class({
-                    text: this.lastMatchRes[0],
-                    ...this.currEntity
-                })
-                this.clazz.resolveSignature()
-                this.currEntity = null
-            }
-        } else if (this.match(regExp.METHOD_SIGNATURE)) { // 方法
-            const method = new Method({
-                text: this.lastMatchRes[0],
-                ...this.currEntity
-            })
-            method.resolveSignature()
-            this.clazz.addMethod(method)
-            this.currEntity = null
-
-            const endIndex = this.matchPairs()
-            if (endIndex) {
-                this.lastMatchRes[0] = '}'
-                this.lastMatchRes.index = endIndex
-            }
-
-        } else if (this.match(regExp.FIELD_SIGNATURE)) { // 字段
-            const field = new Field({
-                text: this.lastMatchRes[0],
-                ...this.currEntity
-            })
-            field.resolveSignature()
-            this.clazz.addField(field)
-            this.currEntity = null
-        }
-
-        this.clean()
-        if (this.lastMatchRes) {
-            this.iterate()
-        }
-    }
-
-    setCurrEntityMember(memberName, cb, isArray) {
+    /**
+     * 添加注释或注解
+     * @param {String} name
+     * @param {Function} cb 
+     * @param {Boolean} isArray 
+     */
+    add2Cache(name, cb, isArray) {
         const instant = cb()
-        let member = this.currEntity[memberName]
+        let member = this.memberCache[name]
         if (!member && isArray) {
             member = []
         }
@@ -159,14 +179,21 @@ class Resolver {
         } else {
             member = instant
         }
-        this.currEntity[memberName] = member
+        this.memberCache[name] = member
     }
 
+    /**
+     * 匹配并缓存匹配结果
+     * @param {RegExp} reg 
+     */
     match(reg) {
         this.lastMatchRes = this.text.match(reg)
         return this.lastMatchRes
     }
 
+    /**
+     * 匹配成对花括号
+     */
     matchPairs() {
         const reg = new RegExp(regExp.PAIR) // 必须新建一个正则对象
         let leftCount = 0
@@ -199,6 +226,9 @@ class Resolver {
         return res
     }
 
+    /**
+     * 清除上一次匹配的结果
+     */
     clean() {
         if (this.lastMatchRes) {
             this.text = this.text.substring(this.lastMatchRes.index + this.lastMatchRes[0].length)

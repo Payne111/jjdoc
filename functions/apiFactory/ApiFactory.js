@@ -25,7 +25,36 @@ class ApiFactory {
         return this.apis
     }
 
+    // 处理注解列表
+    processAnnos(annos, cb) {
+        if (annos) {
+            annos.forEach(cb)
+        }
+    }
 
+    // 处理注解
+    processAnno(anno) {
+        let annoProduct = null
+        if (anno) {
+            // 请求类型
+            if (regExp.IS_API.test(anno.name)) {
+                annoProduct = new AnnoProduct()
+                const annoParams = anno.params
+                annoParams.forEach(param => {
+                    if (!param.name && param.value || param.name == 'value') {
+                        annoProduct.setSubApiPath(this.processApiPath(param.value))
+                    } else if (param.name == 'method') {
+                        if (keyWords.GET.test(param.value)) {
+                            this.currRequestType = constant.GET
+                        } else if (keyWords.POST.test(param.value)) {
+                            this.currRequestType = constant.POST
+                        }
+                    }
+                })
+            }
+        }
+        return annoProduct
+    }
 
     // 处理所有方法
     processMethods() {
@@ -39,7 +68,7 @@ class ApiFactory {
 
     // 处理方法
     processMethod(method) {
-        // console.log(method)
+        
         let api = null
 
         // 注解
@@ -58,60 +87,23 @@ class ApiFactory {
             // 处理注释
             api.setComment(method.comment)
 
-            // 返回类型
-            const returnType = this.processType(method.returnType)
-            api.setReturnType(returnType)
+            // 返回类型名
+            api.setReturnTypeName(method.returnTypeName)
+
+            // 返回类型结构
+            const returnTypeStruct = this.processStruct(method.returnTypeStruct)
+            api.setReturnTypeStruct(returnTypeStruct)
 
             // 参数
             const params = this.processParams(method.params)
             api.setParams(params)
 
             // 请求类型
-            api.setRequestType(this.currRequestType)
+            api.setRequestType(this.currRequestType || constant.GET)
             this.currRequestType = null
 
             this.apis.push(api)
         }
-    }
-
-    // 处理注解列表
-    processAnnos(annos, cb) {
-        if (annos) {
-            annos.forEach(cb)
-        }
-    }
-
-    // 处理注解
-    processAnno(anno) {
-        let annoProduct = null
-        if (anno) {
-            // 请求类型
-            if (regExp.IS_API.test(anno.name)) {
-                annoProduct = new AnnoProduct()
-                if (keyWords.POST_MAPPING.test(anno.name)) { // post
-                    this.currRequestType = constant.POST
-                    if (utils.isString(anno.param)) {
-                        // 请求路径
-                        annoProduct.setSubApiPath(this.processApiPath(anno.param))
-                    }
-                } else {
-                    if (utils.isString(anno.param)) { // get
-                        this.currRequestType = constant.GET
-                        // 请求路径
-                        annoProduct.setSubApiPath(this.processApiPath(anno.param))
-                    } else if (utils.isObject(anno.param)) {
-                        if (keyWords.GET.test(anno.param.method)) { // get
-                            this.currRequestType = constant.GET
-                        } else if (keyWords.POST.test(anno.param.method)) { // post
-                            this.currRequestType = constant.POST
-                        }
-                        // 请求路径
-                        annoProduct.setSubApiPath(this.processApiPath(anno.param.value))
-                    }
-                }
-            }
-        }
-        return annoProduct
     }
 
     processApiPath(apiPath) {
@@ -121,24 +113,27 @@ class ApiFactory {
         return apiPath
     }
 
-    // 处理返回值
-    processType(type) {
-        let struct = null
-        if (utils.isString(type)) {
-            struct = type
-        } else if (utils.isObject(type)) {
-            const fields = type.fields
-            if (fields) {
-                struct = Object.create(null)
-                fields.forEach(field => {
-                    const obj = Object.create(null)
-                    obj.type = this.processType(field.type)
-                    obj.comment = field.comment
-                    struct[field.name] = obj
-                })
+    // 处理类结构
+    processStruct(clazz) {
+        let res = null
+        if (clazz) {
+            res = Object.create(null)
+            const fields = clazz.fields
+            fields.forEach(field => {
+                const struct = Object.create(null)
+                struct.name = field.name
+                struct.typeName = field.typeName
+                struct.typeStruct = this.processStruct(field.typeStruct)
+                res[field.name] = struct
+            })
+            if (clazz.superClass) {
+                const superRes = this.processStruct(clazz.superClass)
+                if (superRes) {
+                    res = Object.assign(res, superRes)
+                }
             }
         }
-        return struct
+        return res
     }
 
     // 处理参数列表
@@ -160,18 +155,14 @@ class ApiFactory {
     // 处理参数
     processParam(param) {
         for (let i = 0; i < paramBlacklist.length; i++) {
-            if(paramBlacklist[i].test(param.text)) {
+            if (paramBlacklist[i].test(param.text)) {
                 return null
             }
         }
         let res = Object.create(null)
         res.name = param.name
-        res.type = this.processType(param.type)
-        // if (utils.isString(res.type)) {
-        //     if (/\./.test(res.type)) { // 包路径的形式，说明是第三方的包
-        //         res = null
-        //     }
-        // } 
+        res.typeName = param.typeName
+        res.typeStruct = this.processStruct(param.typeStruct)
         this.processAnnos(param.annotations, anno => {
             if (anno.name == 'RequestBody') {
                 this.currRequestType = constant.POST

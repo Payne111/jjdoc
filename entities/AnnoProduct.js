@@ -1,3 +1,6 @@
+/**
+ * 注解分析的产物
+ */
 class AnnoProduct {
     constructor(param = {}) {
         this.requestType = param.requestType // 请求类型

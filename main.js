@@ -20,12 +20,16 @@ loader.load('com.ggj.life.mini.web.ImgController').then(text => {
             material: clazz
         })
         const apis = apiFactory.produce()
+        // apis.forEach(api => {
+        //     // console.log(api)
+        // })
         const apiConvertor = new ApiConvertor({ apis })
         const mdJsons = apiConvertor.convert()
-        let id = 0
+        let id = 1
+        let md = ''
         mdJsons.forEach(json => {
-            const md = json2md(json)
-            id ++
+            md += json2md(json)
+            // id ++
             utils.writeFile(`/Users/pjf/Desktop/jm${id}.md`, md, function (err) {
                 if (err) {
                     return console.error(err);
@@ -33,6 +37,7 @@ loader.load('com.ggj.life.mini.web.ImgController').then(text => {
                 console.log("数据写入成功！");
             })
         })
+        
     }, 100);
 })
 
