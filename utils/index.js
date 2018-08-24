@@ -1,3 +1,4 @@
+const fs = require('fs')
 const Err = require('../entities/Err')
 
 const isString = arg => {
@@ -16,9 +17,14 @@ const isErr = arg => {
     return arg instanceof Err
 }
 
+const writeFile = (filePath, data, cb) => {
+    fs.writeFile(filePath, data, cb);
+}
+
 module.exports = {
     isString,
     isObject,
     isArray,
-    isErr
+    isErr,
+    writeFile
 }
