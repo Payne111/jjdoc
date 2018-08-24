@@ -29,7 +29,7 @@ class Annotation extends ClassMember {
         } else { // 键值对参数
             paramMatchRes = this.text.match(regExp.KV_PARAM)
             if (paramMatchRes) {
-                const kvs = paramMatchRes[0]
+                let kvs = paramMatchRes[0]
                 kvs = kvs.split(',')
                 kvs.forEach(kv => {
                     kv = kv.split('=')

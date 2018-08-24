@@ -14,7 +14,8 @@ class MdJson {
 
     done() {
         // 接口说明
-        this.addH1('【接口说明】' + this.comment)
+        this.addH1('接口说明')
+        this.addBlockquote(this.comment)
 
         // apiPath
         this.addH2("请求URL")
@@ -27,7 +28,7 @@ class MdJson {
         // params
         this.addH2("请求参数")
         this.params.forEach(param => {
-            this.addUl([this.createUl(param)])
+            this.addUl([this.createUl(param, 'name')])
             this.addH1('')
         });
 
@@ -88,11 +89,15 @@ class MdJson {
 
     createUl(data, nameFeild, typeNameFeild = 'typeName', typeStructField = 'typeStruct') {
         const ul = []
-        let name = ''
+        let row = ''
         if (nameFeild) {
-            name += `${data[nameFeild]} | `
+            row += `${data[nameFeild]} | `
         }
-        ul.push(`${name}${data[typeNameFeild]}`)
+        row = `${row}${data[typeNameFeild]}`
+        if (data.required === false) {
+            row += ' | 可选'
+        }
+        ul.push(row)
         const struct = data[typeStructField]
         if (struct) {
             for (let key in struct) {

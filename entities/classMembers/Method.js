@@ -1,6 +1,7 @@
 const ClassMember = require('../ClassMember')
 const Annotation = require('./Annotation')
 const Param = require('./Param')
+const Comment = require('./Comment')
 
 const regExp = {
     METHOD_COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))$/, // 方法注释
@@ -35,17 +36,23 @@ class Method extends ClassMember {
         // 方法注释
         let res = text.match(regExp.METHOD_COMMENT)
         if (res) {
-            this.comment = res[0]
+            if (this.comment) {
+                this.comment.setText(res[0])
+            } else {
+                this.comment = new Comment({
+                    text: res[0]
+                })
+            }
         }
         // 方法名
         res = text.match(regExp.METHOD_NAME)
-        if(res) {
+        if (res) {
             this.name = res[0]
         }
         // 返回类型名
         text = text.substring(0, res.index).trim()
         res = text.match(regExp.RETURN)
-        if(res) {
+        if (res) {
             this.returnTypeName = res[0]
         }
         if (regExp.SCOPE.test(this.returnTypeName)) { // 构造函数

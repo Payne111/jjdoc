@@ -5,6 +5,12 @@ const ClassMember = require('../ClassMember')
 class Param extends ClassMember {
     constructor(param = {}) {
         super(param)
+        this.required = true // 必传
+
+    }
+
+    setRequired(required) {
+        this.required = required
     }
 
     setBelong(belong) {

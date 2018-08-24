@@ -85,7 +85,9 @@ class ApiFactory {
 
         if (api) {
             // 处理注释
-            api.setComment(method.comment)
+            if (method.comment) {
+                api.setComment(method.comment.text)
+            }
 
             // 返回类型名
             api.setReturnTypeName(method.returnTypeName)
@@ -116,9 +118,10 @@ class ApiFactory {
     // 处理类结构
     processStruct(clazz) {
         let res = null
-        if (clazz) {
+        if (utils.isObject(clazz)) {
             res = Object.create(null)
             const fields = clazz.fields
+            // console.log(clazz.fields)
             fields.forEach(field => {
                 const struct = Object.create(null)
                 struct.name = field.name
@@ -166,6 +169,14 @@ class ApiFactory {
         this.processAnnos(param.annotations, anno => {
             if (anno.name == 'RequestBody') {
                 this.currRequestType = constant.POST
+            } else if (anno.name == 'RequestParam') {
+                anno.params.forEach(param => {
+                    if (param.name == 'value') {
+                        res.name = param.value
+                    } else if (param.name == 'required' && param.value == 'false') {
+                        param.setRequired = false
+                    }
+                })
             }
         })
         return res

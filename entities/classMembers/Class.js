@@ -1,4 +1,6 @@
 const ClassMember = require('../ClassMember')
+const Comment = require('./Comment')
+
 const regExp = {
     NAME: /(?<=\s+(class|interface|enum)\s+)\w+/, // 类名
     SUPER: /(?<=\s+(extends|implements)\s+)\w+/, // 父类
@@ -21,7 +23,13 @@ class Class extends ClassMember {
         // 注释
         let res = this.text.match(regExp.COMMENT)
         if (res) {
-            this.comment = res[0]
+            if (this.comment) {
+                this.comment.setText(res[0])
+            } else {
+                this.comment = new Comment({
+                    text: res[0]
+                })
+            }
         }
         // 父类
         res = this.text.match(regExp.SUPER)

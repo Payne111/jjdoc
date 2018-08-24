@@ -1,4 +1,6 @@
 const ClassMember = require('../ClassMember')
+const Comment = require('./Comment')
+
 const regExp = {
     COMMENT: /((\/\/.*)|(\/\*[\s\S]*?\*\/))/, // 注释
     VALUE: /(?<==\s*)[^\s]+\s*(?=;)/, //字段值
@@ -19,7 +21,13 @@ class Field extends ClassMember {
         // 注释
         let res = text.match(regExp.COMMENT)
         if (res) {
-            this.comment = res[0]
+            if (this.comment) {
+                this.comment.setText(res[0])
+            } else {
+                this.comment = new Comment({
+                    text: res[0]
+                })
+            }
             text = text.substring(0, res.index).trim()
         }
         // 值

@@ -5,7 +5,7 @@ const ApiConvertor = require('./functions/apiConvertor')
 const utils = require('./utils')
 const json2md = require("json2md")
 const loader = new Loader()
-loader.load('com.ggj.life.mini.web.ImgController').then(text => {
+loader.load('com.ggj.life.mini.web.AccountController').then(text => {
     if (utils.isErr(text)) {
         return
     }
