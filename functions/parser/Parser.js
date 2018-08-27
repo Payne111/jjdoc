@@ -12,7 +12,7 @@ const Loader = require('../../functions/loader')
 const utils = require('../../utils')
 const regExp = require('./regExp')
 
-class Resolver {
+class Parser {
     constructor(param = {}) {
         this.text = param.text
         this.lastMatchRes = null // 最新匹配结果
@@ -22,7 +22,7 @@ class Resolver {
         this.complete = false
     }
 
-    resolve() {
+    parse() {
         this.parseOutClassPackage()
         this.parseImports()
         this.parseClassBody()
@@ -80,10 +80,10 @@ class Resolver {
         } else if (this.match(regExp.CLASS_SIGNATURE)) { // 类
             if (this.hasOuterClassMatched) { // 内部类
                 const endIndex = this.matchPairs()
-                const resolver = new Resolver({
+                const parser = new Parser({
                     text: this.text.substring(this.lastMatchRes.index, endIndex + 1)
                 })
-                const clazz = resolver.resolve()
+                const clazz = parser.parse()
                 this.outerClass.addInnerClass(clazz)
                 this.lastMatchRes[0] = '}'
                 this.lastMatchRes.index = endIndex
@@ -147,10 +147,10 @@ class Resolver {
                     }
                     let clazz = depPool[name]
                     if (!clazz) {
-                        const resolver = new Resolver({
+                        const parser = new Parser({
                             text
                         })
-                        clazz = resolver.resolve()
+                        clazz = parser.parse()
                         depPool[name] = clazz
                     }
                     if (!pkg.struct) {
@@ -236,7 +236,7 @@ class Resolver {
     }
 }
 
-module.exports = Resolver
+module.exports = Parser
 
 function getClassName(packageName) {
     const arr = packageName.split('.')

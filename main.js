@@ -1,5 +1,5 @@
 const Loader = require('./functions/loader')
-const Resolver = require('./functions/resolver')
+const Parser = require('./functions/parser')
 const ApiFactory = require('./functions/apiFactory')
 const ApiConvertor = require('./functions/apiConvertor')
 const utils = require('./utils')
@@ -10,10 +10,10 @@ loader.load('com.ggj.life.mini.web.AddressController').then(text => {
         return
     }
 
-    const resolver = new Resolver({
+    const parser = new Parser({
         text
     })
-    const clazz = resolver.resolve()
+    const clazz = parser.parse()
     setTimeout(() => {
         // console.log(clazz)
         const apiFactory = new ApiFactory({
